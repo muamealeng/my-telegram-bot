@@ -2,9 +2,9 @@
 📢 Handler: إدارة القناة - التحقق من الاشتراك + إعلانات
 """
 from aiogram import Router, F, Bot
-from aiogram.types import Message, CallbackQuery, ChatMemberStatus
+from aiogram.types import Message, CallbackQuery
+from aiogram.enums import ChatMemberStatus
 from aiogram.utils.keyboard import InlineKeyboardBuilder
-
 from config import CHANNEL_ID, CHANNEL_LINK, ADMIN_IDS
 
 router = Router()
