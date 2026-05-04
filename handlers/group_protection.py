@@ -16,8 +16,8 @@ from config import ADMIN_IDS, CHANNEL_LINK
 router = Router()
 
 BANNED_WORDS = ["سبام", "spam", "كازينو", "casino", "ربح سريع"]
-LINK_PATTERNS = ["http://", "https://", "t.me/", "telegram.me/", "@"]
-
+LINK_PATTERNS = ["t.me/+", "telegram.me/"]
+ALLOWED_LINKS = []
 
 def welcome_keyboard() -> InlineKeyboardMarkup:
     return InlineKeyboardMarkup(inline_keyboard=[
@@ -87,15 +87,12 @@ async def protect_group(message: Message, bot: Bot):
             await warn.delete()
             return
 
-    for pattern in LINK_PATTERNS:
-        if pattern in text:
-            member = await bot.get_chat_member(message.chat.id, user_id)
-            if member.status in (ChatMemberStatus.ADMINISTRATOR, ChatMemberStatus.CREATOR):
-                return
-            await message.delete()
-            warn = await message.answer(
-                f"🔗 {message.from_user.mention_html()} لا يسمح بإرسال الروابط هنا!"
-            )
-            await asyncio.sleep(5)
-            await warn.delete()
+   for pattern in LINK_PATTERNS:
+    if pattern in text:
+        if any(allowed in text for allowed in ALLOWED_LINKS):
             return
+        await message.delete()
+        warn = await message.answer(f"{message.from_user.mention_html()} لا يسمح بالروابط!")
+        await asyncio.sleep(5)
+        await warn.delete()
+        return
