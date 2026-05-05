@@ -45,8 +45,8 @@ async def main():
     dp.include_router(shop.router)
     dp.include_router(customer_service.router)
     dp.include_router(channel.router)
-    dp.include_router(chat_handler.router)
     dp.include_router(group_protection.router)
+    dp.include_router(chat_handler.router)
     dp.include_router(admin.router)
     logger.info("🚀 البوت يعمل الآن...")
 
