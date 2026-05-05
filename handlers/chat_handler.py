@@ -84,7 +84,13 @@ async def smart_reply(message: Message, bot: Bot):
         return
 
     text = message.text.strip().lower()
-    mention = message.from_user.mention_html()
+    LINK_PATTERNS = [
+        "http://", "https://", "t.me/", "telegram.me/",
+        "www.", ".com", ".net", ".org", ".io", ".gg"
+    ]
+    if any(pattern in text for pattern in LINK_PATTERNS):
+        return
+mention = message.from_user.mention_html()
 
     # ردود السلام
     if any(w in text for w in ["السلام عليكم", "سلام عليكم", "السلام"]):
