@@ -88,7 +88,7 @@ async def protect_group(message: Message, bot: Bot):
             return
 
    for pattern in LINK_PATTERNS:
-    if pattern in text:
+        if pattern in text:
         if any(allowed in text for allowed in ALLOWED_LINKS):
             return
         await message.delete()
