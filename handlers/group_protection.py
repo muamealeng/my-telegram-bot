@@ -244,14 +244,25 @@ async def cmd_del(message: Message, bot: Bot):
         await message.answer(f"فشل الحذف: {e}")
 
 
-@router.message(F.chat.type.in_({"group", "supergroup"}))
+LINK_PATTERNS = [
+    "http://", "https://", "t.me/", "telegram.me/",
+    "www.", ".com", ".net", ".org", ".io", ".gg"
+]
+
+@router.message(F.chat.type.in_({"group", "supergroup"}), flags={"priority": 1})
 async def protect_group(message: Message, bot: Bot):
     if not message.text and not message.caption:
         return
     text = message.text or message.caption or ""
-    user_id = message.from_user.id
+
+    # تجاهل رسائل القناة
+    if message.sender_chat:
+        return
+
     if await is_admin(message, bot):
         return
+
+    # حذف الكلمات المحظورة
     for word in BANNED_WORDS:
         if word.lower() in text.lower():
             await message.delete()
@@ -259,14 +270,13 @@ async def protect_group(message: Message, bot: Bot):
             await asyncio.sleep(5)
             await warn.delete()
             return
-    for pattern in LINK_PATTERNS:
-        if pattern in text:
-            if message.sender_chat:
-                return
-            if any(allowed in text for allowed in ALLOWED_LINKS):
-                return
-            await message.delete()
-            warn = await message.answer(f"{message.from_user.mention_html()} لا يسمح بالروابط!")
-            await asyncio.sleep(5)
-            await warn.delete()
+
+    # حذف الروابط
+    has_link = any(pattern in text for pattern in LINK_PATTERNS)
+    if has_link:
+        if any(allowed in text for allowed in ALLOWED_LINKS):
             return
+        await message.delete()
+        warn = await message.answer(f"{message.from_user.mention_html()} لا يسمح بالروابط! 🚫")
+        await asyncio.sleep(5)
+        await warn.delete()
