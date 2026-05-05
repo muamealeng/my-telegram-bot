@@ -89,11 +89,26 @@ async def cmd_rules(message: Message):
 
 
 async def is_admin(message: Message, bot: Bot) -> bool:
+    """التحقق إذا المرسل أدمن أو في قائمة الأدمن"""
     user_id = message.from_user.id
     if user_id in ADMIN_IDS:
         return True
     member = await bot.get_chat_member(message.chat.id, user_id)
     return member.status in ("administrator", "creator")
+
+
+async def is_linked_channel(message: Message, bot: Bot) -> bool:
+    """التحقق إذا الرسالة من القناة المربوطة بالكروب"""
+    if not message.sender_chat:
+        return False
+    try:
+        chat = await bot.get_chat(message.chat.id)
+        # القناة المربوطة linked_chat_id
+        if chat.linked_chat_id and message.sender_chat.id == chat.linked_chat_id:
+            return True
+    except Exception:
+        pass
+    return False
 
 
 def get_target(message: Message):
@@ -247,36 +262,95 @@ async def cmd_del(message: Message, bot: Bot):
         await message.answer(f"فشل الحذف: {e}")
 
 
+def has_link_in_message(message: Message) -> bool:
+    """فحص الروابط في النص والـ entities"""
+    text = message.text or message.caption or ""
+
+    # فحص النص مباشرة
+    if any(pattern in text for pattern in LINK_PATTERNS):
+        return True
+
+    # فحص الـ entities (روابط مخفية أو clickable)
+    entities = message.entities or message.caption_entities or []
+    for entity in entities:
+        if entity.type in ("url", "text_link"):
+            return True
+
+    return False
+
+
+def is_allowed_link(message: Message) -> bool:
+    """التحقق إذا الرابط من الروابط المسموح بها"""
+    text = message.text or message.caption or ""
+
+    # جمع كل الروابط في الرسالة
+    all_links = []
+
+    # روابط من النص
+    for pattern in LINK_PATTERNS:
+        if pattern in text:
+            # استخراج الكلمة التي تحتوي الرابط
+            for word in text.split():
+                if pattern in word:
+                    all_links.append(word)
+
+    # روابط من الـ entities
+    entities = message.entities or message.caption_entities or []
+    for entity in entities:
+        if entity.type == "url":
+            url = text[entity.offset: entity.offset + entity.length]
+            all_links.append(url)
+        elif entity.type == "text_link" and entity.url:
+            all_links.append(entity.url)
+
+    if not all_links:
+        return False
+
+    # التحقق إذا كل الروابط مسموح بها
+    return all(
+        any(allowed in link for allowed in ALLOWED_LINKS)
+        for link in all_links
+    )
 
 
 @router.message(F.chat.type.in_({"group", "supergroup"}), flags={"priority": 1})
 async def protect_group(message: Message, bot: Bot):
-    if not message.text and not message.caption:
-        return
     text = message.text or message.caption or ""
-
-    # تجاهل رسائل القناة
-    if message.sender_chat:
+    if not text:
         return
 
-    if await is_admin(message, bot):
+    # ✅ استثناء القناة المربوطة بالكروب
+    if await is_linked_channel(message, bot):
+        return
+
+    # ✅ استثناء الأدمن
+    if message.from_user and await is_admin(message, bot):
         return
 
     # حذف الكلمات المحظورة
     for word in BANNED_WORDS:
         if word.lower() in text.lower():
-            await message.delete()
-            warn = await message.answer(f"{message.from_user.mention_html()} تم حذف رسالتك!")
-            await asyncio.sleep(5)
-            await warn.delete()
+            try:
+                await message.delete()
+                warn = await message.answer(
+                    f"{message.from_user.mention_html()} تم حذف رسالتك بسبب كلمات محظورة! 🚫"
+                )
+                await asyncio.sleep(5)
+                await warn.delete()
+            except Exception as e:
+                print(f"خطأ في حذف الكلمات المحظورة: {e}")
             return
 
     # حذف الروابط
-    has_link = any(pattern in text for pattern in LINK_PATTERNS)
-    if has_link:
-        if any(allowed in text for allowed in ALLOWED_LINKS):
+    if has_link_in_message(message):
+        if is_allowed_link(message):
             return
-        await message.delete()
-        warn = await message.answer(f"{message.from_user.mention_html()} لا يسمح بالروابط! 🚫")
-        await asyncio.sleep(5)
-        await warn.delete()
+        try:
+            await message.delete()
+            warn = await message.answer(
+                f"{message.from_user.mention_html()} لا يسمح بإرسال الروابط! 🚫"
+            )
+            await asyncio.sleep(5)
+            await warn.delete()
+        except Exception as e:
+            print(f"خطأ في حذف الرابط: {e}")
