@@ -16,7 +16,7 @@ from config import ADMIN_IDS, CHANNEL_LINK
 router = Router()
 
 BANNED_WORDS = ["سبام", "spam", "كازينو", "casino", "ربح سريع"]
-LINK_PATTERNS = ["t.me/+", "telegram.me/"]
+LINK_PATTERNS = ["http://", "https://", "t.me/", "telegram.me/"]
 ALLOWED_LINKS = [CHANNEL_LINK]
 warnings = {}
 WELCOME_PHOTO = "https://i.imgur.com/4M7IWwP.jpeg"
