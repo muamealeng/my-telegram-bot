@@ -16,7 +16,10 @@ from config import ADMIN_IDS, CHANNEL_LINK
 router = Router()
 
 BANNED_WORDS = ["سبام", "spam", "كازينو", "casino", "ربح سريع"]
-LINK_PATTERNS = ["http://", "https://", "t.me/", "telegram.me/"]
+LINK_PATTERNS = [
+    "http://", "https://", "t.me/", "telegram.me/",
+    "www.", ".com", ".net", ".org", ".io", ".gg"
+]
 ALLOWED_LINKS = [CHANNEL_LINK]
 warnings = {}
 WELCOME_PHOTO = "https://i.imgur.com/4M7IWwP.jpeg"
@@ -244,10 +247,7 @@ async def cmd_del(message: Message, bot: Bot):
         await message.answer(f"فشل الحذف: {e}")
 
 
-LINK_PATTERNS = [
-    "http://", "https://", "t.me/", "telegram.me/",
-    "www.", ".com", ".net", ".org", ".io", ".gg"
-]
+
 
 @router.message(F.chat.type.in_({"group", "supergroup"}), flags={"priority": 1})
 async def protect_group(message: Message, bot: Bot):
