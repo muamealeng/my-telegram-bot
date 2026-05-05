@@ -11,7 +11,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.fsm.storage.memory import MemoryStorage
 
 from config import BOT_TOKEN
-from handlers import start, shop, admin, customer_service, channel, group_protection
+from handlers import start, shop, admin, customer_service, channel, group_protection, chat_handler
 from middlewares.throttling import ThrottlingMiddleware
 from database.db import init_db
 
@@ -46,6 +46,7 @@ async def main():
     dp.include_router(customer_service.router)
     dp.include_router(channel.router)
     dp.include_router(group_protection.router)
+    dp.include_router(chat_handler.router)
     dp.include_router(admin.router)  # الأدمن يجب أن يكون آخراً
 
     logger.info("🚀 البوت يعمل الآن...")
