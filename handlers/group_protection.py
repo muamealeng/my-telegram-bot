@@ -260,8 +260,13 @@ async def protect_group(message: Message, bot: Bot):
             await warn.delete()
             return
     for pattern in LINK_PATTERNS:
-    if pattern in text:
-        # تجاهل رسائل القناة المرتبطة
-        if message.sender_chat:
+        if pattern in text:
+            if message.sender_chat:
+                return
+            if any(allowed in text for allowed in ALLOWED_LINKS):
+                return
+            await message.delete()
+            warn = await message.answer(f"{message.from_user.mention_html()} لا يسمح بالروابط!")
+            await asyncio.sleep(5)
+            await warn.delete()
             return
-        await message.delete()
