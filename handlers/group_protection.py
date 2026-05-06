@@ -142,6 +142,14 @@ def is_allowed_link(message: Message) -> bool:
     return all(any(allowed in link for allowed in ALLOWED_LINKS) for link in all_links)
 
 
+def has_mention_in_message(message: Message) -> bool:
+    entities = message.entities or message.caption_entities or []
+    for entity in entities:
+        if entity.type in ("mention", "text_mention"):
+            return True
+    return False
+
+
 @router.message(Command("ban"))
 async def cmd_ban(message: Message, bot: Bot):
     if not await is_admin(message, bot):
@@ -286,10 +294,16 @@ async def protect_group(message: Message, bot: Bot):
     text = message.text or message.caption or ""
     if not text:
         return
+
+    # استثناء القناة المربوطة
     if await is_linked_channel(message, bot):
         return
+
+    # استثناء الأدمن
     if message.from_user and await is_admin(message, bot):
         return
+
+    # حذف الكلمات المحظورة
     for word in BANNED_WORDS:
         if word.lower() in text.lower():
             try:
@@ -302,13 +316,27 @@ async def protect_group(message: Message, bot: Bot):
             except Exception as e:
                 print(f"خطأ: {e}")
             return
+
+    # حذف الروابط
     if has_link_in_message(message):
         if is_allowed_link(message):
             return
         try:
             await message.delete()
-            warn = await message.answer(f"{message.from_user.mention_html()} لا يسمح بالروابط!")
+            warn = await message.answer(f"{message.from_user.mention_html()} لا يسمح بالروابط! 🚫")
             await asyncio.sleep(5)
             await warn.delete()
         except Exception as e:
             print(f"خطأ: {e}")
+        return
+
+    # حذف التاق (mentions)
+    if has_mention_in_message(message):
+        try:
+            await message.delete()
+            warn = await message.answer(f"{message.from_user.mention_html()} لا يسمح بتاق الأعضاء! 🚫")
+            await asyncio.sleep(5)
+            await warn.delete()
+        except Exception as e:
+            print(f"خطأ: {e}")
+        return
