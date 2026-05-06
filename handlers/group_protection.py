@@ -16,10 +16,7 @@ from config import ADMIN_IDS, CHANNEL_LINK
 router = Router()
 
 BANNED_WORDS = ["سبام", "spam", "منيوك", "كواد", "ربح سريع", "كس", "انيج", "كحبه", "ديوس", "بلاع العير", "ابن الكحبه"]
-LINK_PATTERNS = [
-    "http://", "https://", "t.me/", "telegram.me/",
-    "www.", ".com", ".net", ".org", ".io", ".gg"
-]
+LINK_PATTERNS = ["http://", "https://", "t.me/", "telegram.me/", "www.", ".com", ".net", ".org", ".io", ".gg"]
 ALLOWED_LINKS = [CHANNEL_LINK]
 warnings = {}
 WELCOME_PHOTO = "https://i.imgur.com/4M7IWwP.jpeg"
@@ -89,7 +86,6 @@ async def cmd_rules(message: Message):
 
 
 async def is_admin(message: Message, bot: Bot) -> bool:
-    """التحقق إذا المرسل أدمن أو في قائمة الأدمن"""
     user_id = message.from_user.id
     if user_id in ADMIN_IDS:
         return True
@@ -98,12 +94,10 @@ async def is_admin(message: Message, bot: Bot) -> bool:
 
 
 async def is_linked_channel(message: Message, bot: Bot) -> bool:
-    """التحقق إذا الرسالة من القناة المربوطة بالكروب"""
     if not message.sender_chat:
         return False
     try:
         chat = await bot.get_chat(message.chat.id)
-        # القناة المربوطة linked_chat_id
         if chat.linked_chat_id and message.sender_chat.id == chat.linked_chat_id:
             return True
     except Exception:
@@ -115,6 +109,37 @@ def get_target(message: Message):
     if message.reply_to_message:
         return message.reply_to_message.from_user
     return None
+
+
+def has_link_in_message(message: Message) -> bool:
+    text = message.text or message.caption or ""
+    if any(pattern in text for pattern in LINK_PATTERNS):
+        return True
+    entities = message.entities or message.caption_entities or []
+    for entity in entities:
+        if entity.type in ("url", "text_link"):
+            return True
+    return False
+
+
+def is_allowed_link(message: Message) -> bool:
+    text = message.text or message.caption or ""
+    all_links = []
+    for pattern in LINK_PATTERNS:
+        if pattern in text:
+            for word in text.split():
+                if pattern in word:
+                    all_links.append(word)
+    entities = message.entities or message.caption_entities or []
+    for entity in entities:
+        if entity.type == "url":
+            url = text[entity.offset: entity.offset + entity.length]
+            all_links.append(url)
+        elif entity.type == "text_link" and entity.url:
+            all_links.append(entity.url)
+    if not all_links:
+        return False
+    return all(any(allowed in link for allowed in ALLOWED_LINKS) for link in all_links)
 
 
 @router.message(Command("ban"))
@@ -214,10 +239,7 @@ async def cmd_warn(message: Message, bot: Bot):
         await message.answer(f"{target.mention_html()} وصل لـ 3 تحذيرات وتم حظره!")
         warnings[user_id] = 0
     else:
-        await message.answer(
-            f"تحذير لـ {target.mention_html()}\n"
-            f"عدد التحذيرات: {count}/3"
-        )
+        await message.answer(f"تحذير لـ {target.mention_html()}\nعدد التحذيرات: {count}/3")
 
 
 @router.message(Command("unwarn"))
@@ -230,10 +252,7 @@ async def cmd_unwarn(message: Message, bot: Bot):
     user_id = target.id
     if warnings.get(user_id, 0) > 0:
         warnings[user_id] -= 1
-    await message.answer(
-        f"تم رفع تحذير عن {target.mention_html()}\n"
-        f"عدد التحذيرات: {warnings.get(user_id, 0)}/3"
-    )
+    await message.answer(f"تم رفع تحذير عن {target.mention_html()}\nعدد التحذيرات: {warnings.get(user_id, 0)}/3")
 
 
 @router.message(Command("pin"))
@@ -262,97 +281,34 @@ async def cmd_del(message: Message, bot: Bot):
         await message.answer(f"فشل الحذف: {e}")
 
 
-def has_link_in_message(message: Message) -> bool:
-    """فحص الروابط في النص والـ entities"""
-    text = message.text or message.caption or ""
-
-    # فحص النص مباشرة
-    if any(pattern in text for pattern in LINK_PATTERNS):
-        return True
-
-    # فحص الـ entities (روابط مخفية أو clickable)
-    entities = message.entities or message.caption_entities or []
-    for entity in entities:
-        if entity.type in ("url", "text_link"):
-            return True
-
-    return False
-
-
-def is_allowed_link(message: Message) -> bool:
-    """التحقق إذا الرابط من الروابط المسموح بها"""
-    text = message.text or message.caption or ""
-
-    # جمع كل الروابط في الرسالة
-    all_links = []
-
-    # روابط من النص
-    for pattern in LINK_PATTERNS:
-        if pattern in text:
-            # استخراج الكلمة التي تحتوي الرابط
-            for word in text.split():
-                if pattern in word:
-                    all_links.append(word)
-
-    # روابط من الـ entities
-    entities = message.entities or message.caption_entities or []
-    for entity in entities:
-        if entity.type == "url":
-            url = text[entity.offset: entity.offset + entity.length]
-            all_links.append(url)
-        elif entity.type == "text_link" and entity.url:
-            all_links.append(entity.url)
-
-    if not all_links:
-        return False
-
-    # التحقق إذا كل الروابط مسموح بها
-    return all(
-        any(allowed in link for allowed in ALLOWED_LINKS)
-        for link in all_links
-    )
-
-
-@router.message(F.chat.type.in_({"group", "supergroup"}), flags={"priority": 1})
+@router.message(F.chat.type.in_({"group", "supergroup"}))
 async def protect_group(message: Message, bot: Bot):
     text = message.text or message.caption or ""
     if not text:
         return
-
-    # ✅ استثناء القناة المربوطة بالكروب
     if await is_linked_channel(message, bot):
         return
-
-    # ✅ استثناء الأدمن
     if message.from_user and await is_admin(message, bot):
         return
-
-    # حذف الكلمات المحظورة
     for word in BANNED_WORDS:
         if word.lower() in text.lower():
             try:
                 await message.delete()
-                warn = await message.answer(
-                    f"{message.from_user.mention_html()} تم حذف رسالتك بسبب كلمات محظورة! 🚫"
-                )
+                await bot.ban_chat_member(message.chat.id, message.from_user.id)
+                await bot.unban_chat_member(message.chat.id, message.from_user.id)
+                warn = await message.answer(f"{message.from_user.mention_html()} تم طرده بسبب كلمات مسيئة!")
                 await asyncio.sleep(5)
                 await warn.delete()
             except Exception as e:
-                print(f"خطأ في حذف الكلمات المحظورة: {e}")
+                print(f"خطأ: {e}")
             return
-
-    # حذف الروابط
     if has_link_in_message(message):
         if is_allowed_link(message):
             return
         try:
-          await message.delete()
-try:
-    await bot.ban_chat_member(message.chat.id, message.from_user.id)
-    await bot.unban_chat_member(message.chat.id, message.from_user.id)
-    warn = await message.answer(f"{message.from_user.mention_html()} تم طرده بسبب استخدام كلمات مسيئة!")
-    await asyncio.sleep(5)
-    await warn.delete()
-except Exception:
-    pass
-return
+            await message.delete()
+            warn = await message.answer(f"{message.from_user.mention_html()} لا يسمح بالروابط!")
+            await asyncio.sleep(5)
+            await warn.delete()
+        except Exception as e:
+            print(f"خطأ: {e}")
