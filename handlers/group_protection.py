@@ -15,7 +15,7 @@ from config import ADMIN_IDS, CHANNEL_LINK
 
 router = Router()
 
-BANNED_WORDS = ["سبام", "spam", "كازينو", "casino", "ربح سريع"]
+BANNED_WORDS = ["سبام", "spam", "منيوك", "كواد", "ربح سريع", "كس", "انيج", "كحبه", "ديوس", "بلاع العير", "ابن الكحبه"]
 LINK_PATTERNS = [
     "http://", "https://", "t.me/", "telegram.me/",
     "www.", ".com", ".net", ".org", ".io", ".gg"
@@ -346,11 +346,13 @@ async def protect_group(message: Message, bot: Bot):
         if is_allowed_link(message):
             return
         try:
-            await message.delete()
-            warn = await message.answer(
-                f"{message.from_user.mention_html()} لا يسمح بإرسال الروابط! 🚫"
-            )
-            await asyncio.sleep(5)
-            await warn.delete()
-        except Exception as e:
-            print(f"خطأ في حذف الرابط: {e}")
+          await message.delete()
+try:
+    await bot.ban_chat_member(message.chat.id, message.from_user.id)
+    await bot.unban_chat_member(message.chat.id, message.from_user.id)
+    warn = await message.answer(f"{message.from_user.mention_html()} تم طرده بسبب استخدام كلمات مسيئة!")
+    await asyncio.sleep(5)
+    await warn.delete()
+except Exception:
+    pass
+return
