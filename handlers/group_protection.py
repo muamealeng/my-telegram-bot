@@ -304,11 +304,11 @@ async def protect_group(message: Message, bot: Bot):
     if message.from_user and await is_admin(message, bot):
         return
 
-    # حذف الكلمات المحظورة
+    # حذف الكلمات المحظورة ✅ الإصلاح هنا
     for word in BANNED_WORDS:
-    if word.lower() in text.lower():
-        if any(allowed.lower() in text.lower() for allowed in ALLOWED_WORDS):
-            break
+        if word.lower() in text.lower():
+            if any(allowed.lower() in text.lower() for allowed in ALLOWED_WORDS):
+                break
             try:
                 await message.delete()
                 await bot.ban_chat_member(message.chat.id, message.from_user.id)
