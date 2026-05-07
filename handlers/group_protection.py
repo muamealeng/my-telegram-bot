@@ -306,7 +306,9 @@ async def protect_group(message: Message, bot: Bot):
 
     # حذف الكلمات المحظورة
     for word in BANNED_WORDS:
-        if word.lower() in text.lower():
+    if word.lower() in text.lower():
+        if any(allowed.lower() in text.lower() for allowed in ALLOWED_WORDS):
+            break
             try:
                 await message.delete()
                 await bot.ban_chat_member(message.chat.id, message.from_user.id)
