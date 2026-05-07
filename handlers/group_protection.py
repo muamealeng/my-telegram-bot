@@ -16,6 +16,7 @@ from config import ADMIN_IDS, CHANNEL_LINK
 router = Router()
 
 BANNED_WORDS = ["سبام", "spam", "منيوك", "كواد", "ربح سريع", "كس", "انيج", "كحبه", "ديوس", "بلاع العير", "ابن الكحبه"]
+ALLOWED_WORDS = ["فوكس", "نكست"]
 LINK_PATTERNS = ["http://", "https://", "t.me/", "telegram.me/", "www.", ".com", ".net", ".org", ".io", ".gg"]
 ALLOWED_LINKS = [CHANNEL_LINK]
 warnings = {}
